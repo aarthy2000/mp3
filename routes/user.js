@@ -28,7 +28,7 @@ module.exports = function (router) {
       const userObject = new User(body);
 
       const pendingTasks = body.pendingTasks ? body.pendingTasks : [];
-
+      console.log("pending takss? ",pendingTasks);
       for(item of pendingTasks){
         var task = await Task.findOne(
           {_id: item},
@@ -42,7 +42,13 @@ module.exports = function (router) {
         if(task.assignedUser !== ""){
           throw new Error(`Pending task ${item} is already assigned to a different user!`)
         }
+
+        task.assignedUser = userObject._id;
+        task.assignedUserName = userObject.name;
+        console.log("body: ",task);
+        await task.save();
       }
+
       const newUser = await userObject.save();
       res.status(201).send({
         'message':'CREATED',
@@ -158,9 +164,13 @@ module.exports = function (router) {
               throw new Error(`Task ${item} does not exist!`)
             }
             //task and user has 1:1 relationship
-            if(task.assignedUser !== ""){
+            if(task.assignedUser !== "" && task.assignedUser !== user._id){
               throw new Error(`Pending task ${item} is already assigned to a different user!`)
             }
+
+            task.assignedUser = user._id;
+            task.assignedUserName = user.name;
+            await task.save();
             };
 
             userBody.pendingTasks = requestedPendingTasks;
