@@ -29,7 +29,7 @@ var TaskSchema = new mongoose.Schema({
     },
     assignedUserName:{
         type: String,
-        default: ""
+        default: "unassigned"
     },
     dateCreated: {
         type: Date,

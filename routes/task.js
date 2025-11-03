@@ -11,7 +11,7 @@ module.exports = function (router) {
   taskRoute.get(async (req, res) => {
     
     const baseQuery = Task.find({});
-    const queryGenerator = new QueryGenerator(baseQuery, req.query);
+    const queryGenerator = new QueryGenerator(baseQuery, req.query,"tasks");
     const tasks = await queryGenerator.advancedQuery.exec();
 
     var json = {
@@ -27,18 +27,25 @@ module.exports = function (router) {
       try{
         const taskBody = new Task(body);
         const hasAssignedUser = !isEmpty(body.assignedUser);
+
+        taskBody.assignedUserName = "unassigned";
+        taskBody.assignedUser = "";
+
         if(hasAssignedUser){
           const assignedUserObject = await User.findOne({_id: body.assignedUser}) ?? (() => { throw new Error(`We haven't heard of that User: ${body.assignedUser}`) })();
 
           taskBody.assignedUserName = assignedUserObject.name;
+          taskBody.assignedUser = body.assignedUser;
         }
+        
 
         const newTask = await taskBody.save();
+        const isCompleted = String(body.completed).toLowerCase() === 'true' ? true: false;
 
-        if(hasAssignedUser){
+        if(hasAssignedUser && !isCompleted){
           const user = await User .findOneAndUpdate(
           {_id: body.assignedUser},
-          {$push:{pendingTasks: body._id}});
+          {$addToSet:{pendingTasks: newTask._id}});
         }
 
           res.status(201).send({
@@ -57,7 +64,7 @@ module.exports = function (router) {
   
      taskRoute_pv.get(async (req, res) => {
       const taskId = req.params.id;
-      const queryGenerator = new QueryGenerator(Task.findById({_id: taskId}), req.query);
+      const queryGenerator = new QueryGenerator(Task.findById({_id: taskId}), req.query, "tasks");
       const task = await queryGenerator.advancedQuery.exec();
   
       if (task === null){
@@ -94,8 +101,7 @@ module.exports = function (router) {
             {_id: task.assignedUser},
             {$pull: {pendingTasks: taskId}}
           );
-          
-         
+
           res.status(204).send();
         }
         catch(e){
@@ -112,10 +118,10 @@ module.exports = function (router) {
 
     taskRoute_pv.put(async (req, res) => {
       const taskId = req.params.id;
-      const taskBody = req.body;
-      const task = await Task.findById({_id: taskId});
+      const requestTaskBody = req.body;
+      const fetchedTask = await Task.findById({_id: taskId});
   
-      if (task === null){
+      if (fetchedTask === null){
         var json = {
           'message': 'NOT FOUND',
           'data':{'error':`Task with id ${taskId} not found`}
@@ -125,36 +131,60 @@ module.exports = function (router) {
       else{
         try{
         //add assignedUserName and assignedUser ID to body
-        var hasAssignedUser = !isEmpty(taskBody.assignedUser);
+        var hasAssignedUser = !isEmpty(requestTaskBody.assignedUser);
         if(hasAssignedUser){
-          const assignedUserObject = await User.findOne({_id: taskBody.assignedUser}) ?? (() => { throw new Error(`We haven't heard of that User: ${taskBody.assignedUser}`) })();
-
-          taskBody.assignedUserName = assignedUserObject.name;
+          const assignedUserObject = await User.findOne({_id: requestTaskBody.assignedUser}) ?? (() => { throw new Error(`We haven't heard of that User: ${requestTaskBody.assignedUser}`) })();
+          requestTaskBody.assignedUser = assignedUserObject._id;
+          requestTaskBody.assignedUserName = assignedUserObject.name;
+        }
+        //unassigning only if the assignedUser == "", to prevent accident unassociations when assignedUser is not present in request Body
+        else if(requestTaskBody.assignedUser === ""){
+          requestTaskBody.assignedUser = "";
+          requestTaskBody.assignedUserName = "unassigned"
         }
         //if completed, remove from pending tasks
-        if(body.completed){
+        const isCompleted = String(requestTaskBody.completed).toLowerCase() === 'true' ? true: false;
+        if(isCompleted){
           var user = await User.findByIdAndUpdate(
-            {_id: task.assignedUser},
+            {_id: fetchedTask.assignedUser},
             {$pull: {pendingTasks: taskId}}
           );
         }
+        requestTaskBody.name = requestTaskBody.name ? requestTaskBody.name : fetchedTask.name;
+        requestTaskBody.deadline = requestTaskBody.deadline ? requestTaskBody.deadline : fetchedTask.deadline;
 
-          var putTask = await Task.replaceOne(
-            taskId,
-            taskBody,
-            {runValidators: true, new: true});
+        var putTask = await Task.findOneAndReplace(
+          {_id: taskId},
+          requestTaskBody,
+          {runValidators: true, new: true});
+       
+        if(hasAssignedUser){
+
+          //pull from old user
+          if(requestTaskBody.assignedUser.toString() !== fetchedTask.assignedUser.toString()){
+
+          const user = await User.findOneAndUpdate(
+        {_id: fetchedTask.assignedUser},
+        {$pull:{pendingTasks: taskId}});
+        }
+
+
+         
+          //push to new user if not completed
+          if(!isCompleted){
+
+const user = await User.findOneAndUpdate(
+        {_id: requestTaskBody.assignedUser},
+        {$addToSet:{pendingTasks: taskId}});
+        }
+        }
           
-          if(hasAssignedUser){
-            const user = await User.findOneAndUpdate(
-          {_id: taskBody.assignedUser},
-          {$push:{pendingTasks: taskBody._id}});
-          }
 
-          var json = {
-              'message': 'OK',
-              'data': putTask
-          }
-          res.status(200).send(json);
+        var json = {
+            'message': 'OK',
+            'data': putTask
+        }
+        res.status(200).send(json);
         }
         catch(e){
           var json = {
@@ -172,7 +202,5 @@ module.exports = function (router) {
 };
 
 function isEmpty(value){
-  var boo = value===null || value===undefined || value.trim()==='';
-  console.log("isEmpty? ",boo);
-  return boo;
+  return value===null || value===undefined || value.trim()==='';
 }

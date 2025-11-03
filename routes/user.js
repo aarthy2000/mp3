@@ -10,7 +10,7 @@ module.exports = function (router) {
   
   userRoute.get(async (req, res) => {
     const baseQuery = User.find({})
-    const queryGenerator = new QueryGenerator(baseQuery, req.query);
+    const queryGenerator = new QueryGenerator(baseQuery, req.query,"users");
     const users = await queryGenerator.advancedQuery.exec();
     var json = {
       'message': 'OK',
@@ -26,6 +26,23 @@ module.exports = function (router) {
 
     try{
       const userObject = new User(body);
+
+      const pendingTasks = body.pendingTasks ? body.pendingTasks : [];
+
+      for(item of pendingTasks){
+        var task = await Task.findOne(
+          {_id: item},
+          {assignedUser:1}
+        )
+        //if task does not exist, throw error
+        if(task === null){
+          throw new Error(`Task with id ${item} does not exist!`);
+        }
+        //task and user has 1:1 relationship
+        if(task.assignedUser !== ""){
+          throw new Error(`Pending task ${item} is already assigned to a different user!`)
+        }
+      }
       const newUser = await userObject.save();
       res.status(201).send({
         'message':'CREATED',
@@ -43,7 +60,7 @@ module.exports = function (router) {
 
    userRoute_pv.get(async (req, res) => {
     const userId = req.params.id;
-    const queryGenerator = new QueryGenerator(User.findById({_id: userId}), req.query);
+    const queryGenerator = new QueryGenerator(User.findById({_id: userId}), req.query,"users");
     const user = await queryGenerator.advancedQuery.exec();
 
     if (user === null){
@@ -65,7 +82,7 @@ module.exports = function (router) {
   userRoute_pv.delete(async (req, res) => {
         const userId = req.params.id;
         const user = await User.findById({_id: userId});
-        var pendingTasks = user.pendingTasks;
+        
     
         if (user === null){
           var json = {
@@ -76,17 +93,18 @@ module.exports = function (router) {
         }
         else{
           try{
+            var pendingTasks = user.pendingTasks;
             var deleteuser = await User.deleteOne({_id:userId});
 
-            pendingTasks.forEach(async element => {
+            for(element of pendingTasks){
               var task = await Task.findOneAndUpdate(
                 {_id: element},
                 {$set:{
                   assignedUser: "",
-                  assignedUserName: ""
+                  assignedUserName: "unassigned"
                 }}
               )
-            });
+            };
             
             
             res.status(204).send();
@@ -108,8 +126,6 @@ module.exports = function (router) {
         const userBody = req.body;
         const user = await User.findById({_id: userId});
 
-        userBody.pendingTasks = user.pendingTasks;
-    
         if (user === null){
           var json = {
             'message': 'NOT FOUND',
@@ -119,8 +135,36 @@ module.exports = function (router) {
         }
         else{
           try{
+            const requestedPendingTasks = userBody.pendingTasks ? userBody.pendingTasks : [];
 
-            var putuser = await User.replaceOne(
+            //unassigned pending tasks that are not in the request list
+            for(item of user.pendingTasks){
+              var task = await Task.findOneAndUpdate(
+                item,
+                {$set:{
+                  assignedUser: "",
+                  assignedUserName:"unassigned"
+                }}
+              )
+            }
+            //assign requested pending tasks to this user
+            for(item of requestedPendingTasks){
+              var task = await Task.findOne(
+                {_id: item},
+                {assignedUser:1}
+              )
+            
+            if(task === null){
+              throw new Error(`Task ${item} does not exist!`)
+            }
+            //task and user has 1:1 relationship
+            if(task.assignedUser !== ""){
+              throw new Error(`Pending task ${item} is already assigned to a different user!`)
+            }
+            };
+
+            userBody.pendingTasks = requestedPendingTasks;
+            var putuser = await User.findOneAndReplace(
               {_id:userId},
               userBody, //we replace the entire body with what user provided, only retaining pendingTasks
               {runValidators: true, new: true}
@@ -128,12 +172,12 @@ module.exports = function (router) {
 
             if(user.name !== putuser.name){
               //update tasks assignedUserName for pendingTasks only
-              putuser.pendingTasks.forEach(async task => {
+              for (task of putuser.pendingTasks){
                 await Task.findByIdAndUpdate(
                   {_id: task},
-                  {$set: {assignedUserName: putuser.name}}
+                  {$set: {assignedUserName: putuser.name, assignedUser: userId}}
                 )
-              })
+              }
             }
           
             var json = {
