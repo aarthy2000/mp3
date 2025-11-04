@@ -11,15 +11,21 @@ module.exports = function (router) {
   taskRoute.get(async (req, res) => {
     
     const baseQuery = Task.find({});
-    const queryGenerator = new QueryGenerator(baseQuery, req.query,"tasks");
-    const tasks = await queryGenerator.advancedQuery.exec();
+    try{
+      const queryGenerator = new QueryGenerator(baseQuery, req.query,"tasks");
+      const tasks = await queryGenerator.advancedQuery.exec();
 
-    var json = {
-      'message': 'OK',
-      "data": tasks
-    }
-    res.status(200).send(json);
-  });
+      var json = {
+        'message': 'OK',
+        "data": tasks
+      }
+      res.status(200).send(json);
+      }
+      catch(e){
+        sendErrorResponse(res,500,e,"attempting to fetch tasks");
+      }
+
+    });
 
    taskRoute.post(async (req, res) =>{
       const body = req.body;
@@ -40,6 +46,7 @@ module.exports = function (router) {
         
 
         const newTask = await taskBody.save();
+        //script request body has completed as a string, hence Im considering that case as well.
         const isCompleted = String(body.completed).toLowerCase() === 'true' ? true: false;
 
         if(hasAssignedUser && !isCompleted){
@@ -54,10 +61,7 @@ module.exports = function (router) {
            })
         }
       catch(e){
-        res.status(500).send({
-          'message':'INTERNAL SERVER ERROR',
-          'data':{'error':`Task could not be inserted: Encountered error: ${e}`}
-        })
+        sendErrorResponse(res,500,e,"inserting task");
       }
   
     })
@@ -72,6 +76,7 @@ module.exports = function (router) {
           'message': 'NOT FOUND',
         }
         res.status(404).send(json);
+        sendErrorResponse(res,404, `Task with ${taskId} not found`,"attempting to fetch task");
       }
       else{
         var json = {
@@ -88,11 +93,7 @@ module.exports = function (router) {
       const task = await Task.findById({_id: taskId});
   
       if (task === null){
-        var json = {
-          'message': 'NOT FOUND',
-          'data':{'error':`Task with id ${taskId} not found`}
-        }
-        res.status(404).send(json);
+        sendErrorResponse(res,404,`Task with id ${taskId} not found`,"attempting to delete task");
       }
       else{
         try{
@@ -107,11 +108,8 @@ module.exports = function (router) {
           res.status(204).send();
         }
         catch(e){
-          var json = {
-              'message': 'INTERNAL SERVER ERROR',
-              'data':{'error':`Error encountered while attempting to delete: ${e}`}
-          }
-            res.status(500).send(json);
+          sendErrorResponse(res,500,e,"attempting to delete task");
+            
         }
         
       }
@@ -124,11 +122,7 @@ module.exports = function (router) {
       const fetchedTask = await Task.findById({_id: taskId});
   
       if (fetchedTask === null){
-        var json = {
-          'message': 'NOT FOUND',
-          'data':{'error':`Task with id ${taskId} not found`}
-        }
-        res.status(404).send(json);
+        sendErrorResponse(res,404,`Task with id ${taskId} not found`,"attempting to edit task");
       }
       else{
         try{
@@ -187,11 +181,7 @@ module.exports = function (router) {
         res.status(200).send(json);
         }
         catch(e){
-          var json = {
-              'message': 'INTERNAL SERVER ERROR',
-              'data':{'error':`Error encountered while attempting to replace: ${e}`}
-          }
-            res.status(500).send(json);
+          sendErrorResponse(res,500,e,"attempting to replace task");
         }
         
       }
@@ -203,4 +193,17 @@ module.exports = function (router) {
 
 function isEmpty(value){
   return value===null || value===undefined || value.trim()==='';
+}
+
+
+function sendErrorResponse(res, status, error, request_type){
+  let message_codes = {
+    404: "NOT FOUND",
+    500: "INTERNAL SERVER ERROR"
+  }
+  var json = {
+              'message': message_codes.error,
+              'data':{'error':`Error encountered while attempting to ${request_type}: ${error}`}
+          }
+  res.status(500).send(json);
 }

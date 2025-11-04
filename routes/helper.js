@@ -12,6 +12,8 @@ class QueryGenerator{
 
         const defaultLimit = type==="tasks" ? 100 : null;
 
+        let baseQuery = this.query;
+
         try{
         
         const where = queryParams.where ? JSON.parse(queryParams.where) : {};
@@ -29,8 +31,8 @@ class QueryGenerator{
         if (count) this.query = this.query.countDocuments();
 
         }
-        catch{
-            //no-op;
+        catch(e){
+            this.advancedQuery = baseQuery;
         }
 
         this.advancedQuery = this.query;
