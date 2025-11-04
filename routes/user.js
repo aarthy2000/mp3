@@ -56,7 +56,7 @@ module.exports = function (router) {
         }
 
         if(task.completed){
-          throw new Error(`Task with id ${taskId} is completed and immutable`)
+          throw new Error(`Task with id ${item} is completed and immutable`)
         }
 
         task.assignedUser = userObject._id;
