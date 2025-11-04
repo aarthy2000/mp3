@@ -22,7 +22,8 @@ module.exports = function (router) {
       res.status(200).send(json);
       }
       catch(e){
-        sendErrorResponse(res,400,e,"attempting to fetch tasks");
+        let status = classiifyError(e);
+        sendErrorResponse(res,status,e,"attempting to fetch tasks");
       }
 
     });
@@ -69,7 +70,8 @@ module.exports = function (router) {
            })
         }
       catch(e){
-        sendErrorResponse(res,500,e,"inserting task");
+        let status = classiifyError(e);
+        sendErrorResponse(res,status,e,"inserting task");
       }
   
     })
@@ -129,7 +131,7 @@ module.exports = function (router) {
       }
       else{
         if(fetchedTask.completed){
-          return sendErrorResponse(res,500,`Task with id ${taskId} is completed and immutable`,'attempting to edit task')
+          return sendErrorResponse(res,400,`Task with id ${taskId} is completed and immutable`,'attempting to edit task')
         }
         try{
         //add assignedUserName and assignedUser ID to body
@@ -195,7 +197,8 @@ module.exports = function (router) {
         res.status(200).send(json);
         }
         catch(e){
-          sendErrorResponse(res,400,e,"attempting to replace task");
+          let status = classiifyError(e);
+          sendErrorResponse(res,status,e,"attempting to replace task");
         }
         
       }
@@ -221,4 +224,11 @@ function sendErrorResponse(res, status, error, request_type){
               'data':{'error':`Error encountered while attempting to ${request_type}: ${error}`}
           }
   res.status(500).send(json);
+}
+
+function classiifyError(error){
+  if(error.includes("CastError: Cast to ObjectId failed for value")){
+    return 400;
+  }
+  return 500;
 }

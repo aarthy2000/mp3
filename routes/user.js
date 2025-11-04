@@ -2,7 +2,10 @@ var User = require('../models/user')
 var Task = require('../models/task')
 const QueryGenerator = require('./helper');
 
-
+let error_codes = {
+  400: "BAD REQUEST",
+  500: "INTERNAL SERVER ERROR"
+}
 module.exports = function (router) {
 
   const userRoute = router.route('/users');
@@ -69,9 +72,14 @@ module.exports = function (router) {
       })
     }
     catch(e){
-      res.status(500).send({
+      
+      let email_error = e.toString().includes("duplicate key error collection") && e.toString().includes("email_1");
+
+      let error_message = email_error ? "Email address must be unique to a user" : e;
+      let status = email_error ? 400 : 500;
+      res.status(status).send({
         'message': 'INTERNAL SERVER ERROR',
-        'data':{'error': `User could not be inserted: Encountered error: ${e}`}
+        'data':{'error': `User could not be inserted: Encountered error: ${error_message}`}
       })
     }
 
@@ -99,8 +107,9 @@ module.exports = function (router) {
     }
     }
     catch(e){
-      res.status(500).send({
-        'message': 'INTERNAL SERVER ERROR',
+      let status = classifyError(e);
+      res.status(status).send({
+        'message': error_codes[status],
         'data':{'error': `User could not be inserted: Encountered error: ${e}`}
       })
     }
@@ -138,8 +147,9 @@ module.exports = function (router) {
             res.status(204).send();
           }
           catch(e){
+            let status = classifyError(e);
             var json = {
-                'message': 'INTERNAL SERVER ERROR',
+                'message': error_codes[status],
                 'data': {'error':`Error encountered while attempting to delete: ${e}`}
             }
               res.status(500).send(json);
@@ -223,11 +233,12 @@ module.exports = function (router) {
             res.status(200).send(json);
           }
           catch(e){
+            let status = classifyError(e);
             var json = {
-                'message': 'INTERNAL SERVER ERROR',
+                'message': error_codes[status],
                 'data':{'error':`Error encountered while attempting to replace: ${e}`}
-            }
-              res.status(500).send(json);
+              }
+              res.status(status).send(json);
           }
           
         }
@@ -236,3 +247,10 @@ module.exports = function (router) {
 
   return router;
 };
+
+function classifyError(error){
+  if(error.includes("CastError: Cast to ObjectId failed for value")){
+    return 400;
+  }
+  return 500;
+}
