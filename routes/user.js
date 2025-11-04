@@ -175,39 +175,44 @@ module.exports = function (router) {
           try{
             const requestedPendingTasks = userBody.pendingTasks ? userBody.pendingTasks : [];
 
-            //unassigned pending tasks that are not in the request list
-            for(item of user.pendingTasks){
-              var task = await Task.findOneAndUpdate(
-                item,
-                {$set:{
-                  assignedUser: "",
-                  assignedUserName:"unassigned"
-                }}
-              )
-            }
+            const existingPendingTasks = user.pendingTasks;
+
             //assign requested pending tasks to this user
             for(item of requestedPendingTasks){
               var task = await Task.findOne(
                 {_id: item},
-                {assignedUser:1}
+                {assignedUser:1, completed:1}
               )
             
             if(task === null){
               throw new Error(`Task ${item} does not exist!`)
             }
             //task and user has 1:1 relationship
-            if(task.assignedUser !== "" && task.assignedUser !== user._id){
+            console.log(task.assignedUser, user._id)
+            if(task.assignedUser !== "" && String(task.assignedUser) !== String(user._id)){
               throw new Error(`Pending task ${item} is already assigned to a different user!`)
             }
-
-             if(task.completed){
-                throw new Error(`Task with id ${taskId} is completed and immutable`)
+            if(task.completed){
+              throw new Error(`Task with id ${task._id} is completed and immutable `);
             }
 
             task.assignedUser = user._id;
             task.assignedUserName = user.name;
             await task.save();
             };
+
+            for(item of existingPendingTasks){
+              if(!requestedPendingTasks.includes(item)){
+                await Task.findByIdAndUpdate(
+                  {_id: item},
+                  {$set:{
+                    assignedUser: "",
+                    assignedUserName: "unassigned"
+                  }}
+                )
+              }
+            }
+            
 
             userBody.pendingTasks = requestedPendingTasks;
             var putuser = await User.findOneAndReplace(

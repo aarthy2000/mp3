@@ -42,9 +42,7 @@ module.exports = function (router) {
           const assignedUserObject = await User.findOne({_id: requestTaskBody.assignedUser}) ?? (() => { throw new Error(`We haven't heard of that User: ${requestTaskBody.assignedUser}`) })();
 
           //assignedUserName must be extrapolated if it does not exist in the request body
-          console.log(requestTaskBody.assignedUserName, assignedUserObject.name);
           if(isEmpty(requestTaskBody.assignedUserName)){
-            console.log("empty?");
             taskBody.assignedUserName = assignedUserObject.name;
           }
           else if(requestTaskBody.assignedUserName !== assignedUserObject.name){
@@ -124,23 +122,24 @@ module.exports = function (router) {
     taskRoute_pv.put(async (req, res) => {
       const taskId = req.params.id;
       const requestTaskBody = req.body;
-      const fetchedTask = await Task.findById({_id: taskId});
+      
+        try{
+          const fetchedTask = await Task.findById({_id: taskId});
   
       if (fetchedTask === null){
-        sendErrorResponse(res,404,`Task with id ${taskId} not found`,"attempting to edit task");
+        return sendErrorResponse(res,404,`Task with id ${taskId} not found`,"attempting to edit task");
       }
-      else{
+      
         if(fetchedTask.completed){
           return sendErrorResponse(res,400,`Task with id ${taskId} is completed and immutable`,'attempting to edit task')
         }
-        try{
         //add assignedUserName and assignedUser ID to body
         var hasAssignedUser = !isEmpty(requestTaskBody.assignedUser);
         if(hasAssignedUser){
           const assignedUserObject = await User.findOne({_id: requestTaskBody.assignedUser}) ?? (() => { throw new Error(`We haven't heard of that User: ${requestTaskBody.assignedUser}`) })();
 
           //assignedUserName must be extrapolated if it does not exist in the request body
-          if(!isEmpty(requestTaskBody.assignedUserName)){
+          if(isEmpty(requestTaskBody.assignedUserName)){
             requestTaskBody.assignedUserName = assignedUserObject.name;
           }
           else if(requestTaskBody.assignedUserName !== assignedUserObject.name){
@@ -201,9 +200,7 @@ module.exports = function (router) {
           sendErrorResponse(res,status,e,"attempting to replace task");
         }
         
-      }
-      
-    });
+      });
 
   return router;
 };
