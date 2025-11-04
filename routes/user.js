@@ -44,7 +44,7 @@ module.exports = function (router) {
       for(item of pendingTasks){
         var task = await Task.findOne(
           {_id: item},
-          {assignedUser:1}
+          {assignedUser:1, completed:1}
         )
         //if task does not exist, throw error
         if(task === null){
@@ -158,7 +158,7 @@ module.exports = function (router) {
         }
         
       });
-  
+      //TODO: Change error to terse. email unique
       userRoute_pv.put(async (req, res) => {
         const userId = req.params.id;
         const userBody = req.body;
