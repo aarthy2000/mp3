@@ -249,7 +249,7 @@ module.exports = function (router) {
 };
 
 function classifyError(error){
-  if(error.includes("CastError: Cast to ObjectId failed for value")){
+  if(error.toString().includes("CastError: Cast to ObjectId failed for value")){
     return 400;
   }
   return 500;

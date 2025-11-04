@@ -227,7 +227,7 @@ function sendErrorResponse(res, status, error, request_type){
 }
 
 function classiifyError(error){
-  if(error.includes("CastError: Cast to ObjectId failed for value")){
+  if(error.toString().includes("CastError: Cast to ObjectId failed for value")){
     return 400;
   }
   return 500;
