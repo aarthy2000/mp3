@@ -22,7 +22,7 @@ module.exports = function (router) {
       res.status(200).send(json);
       }
       catch(e){
-        sendErrorResponse(res,500,e,"attempting to fetch tasks");
+        sendErrorResponse(res,400,e,"attempting to fetch tasks");
       }
 
     });
@@ -213,7 +213,8 @@ function isEmpty(value){
 function sendErrorResponse(res, status, error, request_type){
   let message_codes = {
     404: "NOT FOUND",
-    500: "INTERNAL SERVER ERROR"
+    500: "INTERNAL SERVER ERROR",
+    400: "BAD REQUEST",
   }
   var json = {
               'message': message_codes[status],

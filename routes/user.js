@@ -10,6 +10,7 @@ module.exports = function (router) {
   
   userRoute.get(async (req, res) => {
     const baseQuery = User.find({})
+    try{
     const queryGenerator = new QueryGenerator(baseQuery, req.query,"users");
     const users = await queryGenerator.advancedQuery.exec();
     var json = {
@@ -17,6 +18,14 @@ module.exports = function (router) {
       "data": users
     }
     res.status(200).send(json);
+    }
+    catch(e){
+      var json = {
+      'message': 'BAD REQUEST',
+      "data": {"error":`Error while fetching users: ${e}`}
+    }
+      res.status(400).send(json);
+    }
   });
 
  
@@ -70,6 +79,8 @@ module.exports = function (router) {
 
    userRoute_pv.get(async (req, res) => {
     const userId = req.params.id;
+
+    try{
     const queryGenerator = new QueryGenerator(User.findById({_id: userId}), req.query,"users");
     const user = await queryGenerator.advancedQuery.exec();
 
@@ -85,6 +96,13 @@ module.exports = function (router) {
       "data": user
     }
     res.status(200).send(json);
+    }
+    }
+    catch(e){
+      res.status(500).send({
+        'message': 'INTERNAL SERVER ERROR',
+        'data':{'error': `User could not be inserted: Encountered error: ${e}`}
+      })
     }
     
   });
