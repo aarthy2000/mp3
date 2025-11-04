@@ -28,30 +28,38 @@ module.exports = function (router) {
     });
 
    taskRoute.post(async (req, res) =>{
-      const body = req.body;
+      const requestTaskBody = req.body;
 
       try{
-        const taskBody = new Task(body);
-        const hasAssignedUser = !isEmpty(body.assignedUser);
+        const taskBody = new Task(requestTaskBody);
+        const hasAssignedUser = !isEmpty(requestTaskBody.assignedUser);
 
         taskBody.assignedUserName = "unassigned";
         taskBody.assignedUser = "";
 
         if(hasAssignedUser){
-          const assignedUserObject = await User.findOne({_id: body.assignedUser}) ?? (() => { throw new Error(`We haven't heard of that User: ${body.assignedUser}`) })();
+          const assignedUserObject = await User.findOne({_id: requestTaskBody.assignedUser}) ?? (() => { throw new Error(`We haven't heard of that User: ${requestTaskBody.assignedUser}`) })();
 
-          taskBody.assignedUserName = assignedUserObject.name;
-          taskBody.assignedUser = body.assignedUser;
+          //assignedUserName must be extrapolated if it does not exist in the request body
+          console.log(requestTaskBody.assignedUserName, assignedUserObject.name);
+          if(isEmpty(requestTaskBody.assignedUserName)){
+            console.log("empty?");
+            taskBody.assignedUserName = assignedUserObject.name;
+          }
+          else if(requestTaskBody.assignedUserName !== assignedUserObject.name){
+            throw new Error(`User with id ${assignedUserObject._id} has a different name`)
+          }
+          taskBody.assignedUser = assignedUserObject._id;
         }
         
 
         const newTask = await taskBody.save();
         //script request body has completed as a string, hence Im considering that case as well.
-        const isCompleted = String(body.completed).toLowerCase() === 'true' ? true: false;
+        const isCompleted = String(requestTaskBody.completed).toLowerCase() === 'true' ? true: false;
 
         if(hasAssignedUser && !isCompleted){
           const user = await User .findOneAndUpdate(
-          {_id: body.assignedUser},
+          {_id: requestTaskBody.assignedUser},
           {$addToSet:{pendingTasks: newTask._id}});
         }
 
@@ -72,10 +80,6 @@ module.exports = function (router) {
       const task = await queryGenerator.advancedQuery.exec();
   
       if (task === null){
-        var json = {
-          'message': 'NOT FOUND',
-        }
-        res.status(404).send(json);
         sendErrorResponse(res,404, `Task with ${taskId} not found`,"attempting to fetch task");
       }
       else{
@@ -91,7 +95,7 @@ module.exports = function (router) {
     taskRoute_pv.delete(async (req, res) => {
       const taskId = req.params.id;
       const task = await Task.findById({_id: taskId});
-  
+
       if (task === null){
         sendErrorResponse(res,404,`Task with id ${taskId} not found`,"attempting to delete task");
       }
@@ -108,8 +112,7 @@ module.exports = function (router) {
           res.status(204).send();
         }
         catch(e){
-          sendErrorResponse(res,500,e,"attempting to delete task");
-            
+          sendErrorResponse(res,500,e,"attempting to delete task"); 
         }
         
       }
@@ -125,13 +128,24 @@ module.exports = function (router) {
         sendErrorResponse(res,404,`Task with id ${taskId} not found`,"attempting to edit task");
       }
       else{
+        if(fetchedTask.completed){
+          return sendErrorResponse(res,500,`Task with id ${taskId} is completed and immutable`,'attempting to edit task')
+        }
         try{
         //add assignedUserName and assignedUser ID to body
         var hasAssignedUser = !isEmpty(requestTaskBody.assignedUser);
         if(hasAssignedUser){
           const assignedUserObject = await User.findOne({_id: requestTaskBody.assignedUser}) ?? (() => { throw new Error(`We haven't heard of that User: ${requestTaskBody.assignedUser}`) })();
+
+          //assignedUserName must be extrapolated if it does not exist in the request body
+          if(!isEmpty(requestTaskBody.assignedUserName)){
+            requestTaskBody.assignedUserName = assignedUserObject.name;
+          }
+          else if(requestTaskBody.assignedUserName !== assignedUserObject.name){
+            throw new Error(`User with id ${assignedUserObject._id} has a different name`)
+          }
           requestTaskBody.assignedUser = assignedUserObject._id;
-          requestTaskBody.assignedUserName = assignedUserObject.name;
+          
         }
         //unassigning only if the assignedUser == "", to prevent accident unassociations when assignedUser is not present in request Body
         else if(requestTaskBody.assignedUser === ""){
@@ -181,7 +195,7 @@ module.exports = function (router) {
         res.status(200).send(json);
         }
         catch(e){
-          sendErrorResponse(res,500,e,"attempting to replace task");
+          sendErrorResponse(res,400,e,"attempting to replace task");
         }
         
       }
@@ -202,7 +216,7 @@ function sendErrorResponse(res, status, error, request_type){
     500: "INTERNAL SERVER ERROR"
   }
   var json = {
-              'message': message_codes.error,
+              'message': message_codes[status],
               'data':{'error':`Error encountered while attempting to ${request_type}: ${error}`}
           }
   res.status(500).send(json);

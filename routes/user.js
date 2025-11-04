@@ -43,6 +43,10 @@ module.exports = function (router) {
           throw new Error(`Pending task ${item} is already assigned to a different user!`)
         }
 
+        if(task.completed){
+          throw new Error(`Task with id ${taskId} is completed and immutable`)
+        }
+
         task.assignedUser = userObject._id;
         task.assignedUserName = userObject.name;
         console.log("body: ",task);
@@ -166,6 +170,10 @@ module.exports = function (router) {
             //task and user has 1:1 relationship
             if(task.assignedUser !== "" && task.assignedUser !== user._id){
               throw new Error(`Pending task ${item} is already assigned to a different user!`)
+            }
+
+             if(task.completed){
+                throw new Error(`Task with id ${taskId} is completed and immutable`)
             }
 
             task.assignedUser = user._id;
