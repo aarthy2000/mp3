@@ -97,10 +97,12 @@ module.exports = function (router) {
       else{
         try{
           var deleteTask = await Task.deleteOne({_id:taskId});
-          var user = await User.findByIdAndUpdate(
+          if(!isEmpty(task.assignedUser)){
+            var user = await User.findByIdAndUpdate(
             {_id: task.assignedUser},
             {$pull: {pendingTasks: taskId}}
           );
+          }
 
           res.status(204).send();
         }
@@ -168,12 +170,10 @@ module.exports = function (router) {
         {$pull:{pendingTasks: taskId}});
         }
 
-
-         
           //push to new user if not completed
           if(!isCompleted){
 
-const user = await User.findOneAndUpdate(
+        const user = await User.findOneAndUpdate(
         {_id: requestTaskBody.assignedUser},
         {$addToSet:{pendingTasks: taskId}});
         }
