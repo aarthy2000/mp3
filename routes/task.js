@@ -79,7 +79,7 @@ module.exports = function (router) {
   
      taskRoute_pv.get(async (req, res) => {
       const taskId = req.params.id;
-      const queryGenerator = new QueryGenerator(Task.findById({_id: taskId}), req.query, "tasks");
+      const queryGenerator = new QueryGenerator(Task.findById(taskId), req.query, "tasks");
       const task = await queryGenerator.advancedQuery.exec();
   
       if (task === null){

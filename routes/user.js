@@ -48,7 +48,7 @@ module.exports = function (router) {
       pendingTasks = new Set(pendingTasks)
       pendingTasks = [...pendingTasks]
 
-      for(item of pendingTasks){
+      for(const item of pendingTasks){
         var task = await Task.findOne(
           {_id: item},
           {assignedUser:1, completed:1}
@@ -145,7 +145,7 @@ module.exports = function (router) {
             var pendingTasks = user.pendingTasks;
             var deleteuser = await User.deleteOne({_id:userId});
 
-            for(element of pendingTasks){
+            for(const element of pendingTasks){
               var task = await Task.findOneAndUpdate(
                 {_id: element},
                 {$set:{
@@ -185,7 +185,7 @@ module.exports = function (router) {
             'message': 'NOT FOUND',
             'data':{'error':`User with id ${userId} not found`}
           }
-          res.status(404).send(json);
+          return res.status(404).send(json);
         }
         else{
           try{
@@ -199,7 +199,7 @@ module.exports = function (router) {
             const existingPendingTasks = user.pendingTasks;
 
             //assign requested pending tasks to this user
-            for(item of requestedPendingTasks){
+            for(const item of requestedPendingTasks){
               var task = await Task.findOne(
                 {_id: item},
                 {assignedUser:1, completed:1}
@@ -211,6 +211,12 @@ module.exports = function (router) {
             if(task.completed){
               throw new Error(`Task with id ${task._id} is completed and immutable `);
             }
+          }
+          for(const item of requestedPendingTasks){
+            var task = await Task.findOne(
+                {_id: item},
+                {assignedUser:1, completed:1}
+              )
             //changing according to post 312 in piazza
             if(!isEmpty(task.assignedUser)){
               //unassign from old user
@@ -226,7 +232,7 @@ module.exports = function (router) {
             }
           
 
-            for(item of existingPendingTasks){
+            for(const item of existingPendingTasks){
               if(!requestedPendingTasks.includes(item)){
                 await Task.findByIdAndUpdate(
                   {_id: item},
