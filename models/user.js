@@ -20,7 +20,7 @@ var UserSchema = new mongoose.Schema({
             validator: isNonEmpty,
             message: props => `${props.value} must be non-empty`
         },
-        unique: true
+        unique: [true, 'Email must be unique']
     },
     pendingTasks: [String],
     dateCreated: {
@@ -28,7 +28,7 @@ var UserSchema = new mongoose.Schema({
         default: Date.now,
         immutable: true
     }
-},{strict: 'throw'});
+});
 
 function isNonEmpty(v){
     return v.trim().length > 0;

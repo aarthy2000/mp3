@@ -36,7 +36,7 @@ var TaskSchema = new mongoose.Schema({
         default: Date.now,
         immutable: true
     }
-},{strict: 'throw'});
+});
 
 // Export the Mongoose model
 module.exports = mongoose.model('Task', TaskSchema);

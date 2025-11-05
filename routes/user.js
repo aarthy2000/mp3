@@ -36,6 +36,10 @@ module.exports = function (router) {
   userRoute.post(async (req, res) =>{
     const body = req.body;
 
+    //delete objects that should be auto-created by database
+    delete body._id
+    delete body.dateCreated;
+
     try{
       const userObject = new User(body);
 
@@ -167,6 +171,10 @@ module.exports = function (router) {
       userRoute_pv.put(async (req, res) => {
         const userId = req.params.id;
         const userBody = req.body;
+
+        delete body._id
+        delete body.dateCreated;
+
         const user = await User.findById({_id: userId});
 
         if (user === null){
@@ -276,7 +284,7 @@ function classifyError(error){
     
   }
 
-  else if(error.toString().includes("duplicate key error collection") && error.toString().includes("email_1")){
+  else if(error.toString().includes("Email must be unique")){
     error_response = {
     "error": "Email must be unique to a user",
     "code": 400

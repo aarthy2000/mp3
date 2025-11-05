@@ -31,6 +31,9 @@ module.exports = function (router) {
    taskRoute.post(async (req, res) =>{
       const requestTaskBody = req.body;
 
+      delete requestTaskBody._id
+      delete requestTaskBody.dateCreated;
+
       try{
         const taskBody = new Task(requestTaskBody);
         const hasAssignedUser = !isEmpty(requestTaskBody.assignedUser);
@@ -122,6 +125,9 @@ module.exports = function (router) {
     taskRoute_pv.put(async (req, res) => {
       const taskId = req.params.id;
       const requestTaskBody = req.body;
+
+       delete requestTaskBody._id
+      delete requestTaskBody.dateCreated;
       
         try{
           const fetchedTask = await Task.findById({_id: taskId});
