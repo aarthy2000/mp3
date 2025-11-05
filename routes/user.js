@@ -172,8 +172,8 @@ module.exports = function (router) {
         const userId = req.params.id;
         const userBody = req.body;
 
-        delete body._id
-        delete body.dateCreated;
+        delete userBody._id
+        delete userBody.dateCreated;
 
         const user = await User.findById({_id: userId});
 
