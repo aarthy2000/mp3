@@ -167,8 +167,8 @@ module.exports = function (router) {
             {$pull: {pendingTasks: taskId}}
           );
         }
-        requestTaskBody.name = requestTaskBody.name ? requestTaskBody.name : fetchedTask.name;
-        requestTaskBody.deadline = requestTaskBody.deadline ? requestTaskBody.deadline : fetchedTask.deadline;
+        // requestTaskBody.name = requestTaskBody.name ? requestTaskBody.name : fetchedTask.name;
+        // requestTaskBody.deadline = requestTaskBody.deadline ? requestTaskBody.deadline : fetchedTask.deadline;
 
         var putTask = await Task.findOneAndReplace(
           {_id: taskId},
@@ -230,6 +230,9 @@ function sendErrorResponse(res, status, error, request_type){
 
 function classiifyError(error){
   if(error.toString().includes("CastError: Cast to ObjectId failed for value")){
+    return 400;
+  }
+  if(error.toString().includes("ValidationError")){
     return 400;
   }
   return 500;
