@@ -187,7 +187,6 @@ module.exports = function (router) {
         {$addToSet:{pendingTasks: taskId}});
         }
         }
-          
 
         var json = {
             'message': 'OK',

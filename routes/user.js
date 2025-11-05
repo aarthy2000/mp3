@@ -40,7 +40,7 @@ module.exports = function (router) {
       const userObject = new User(body);
 
       const pendingTasks = body.pendingTasks ? body.pendingTasks : [];
-      console.log("pending takss? ",pendingTasks);
+
       for(item of pendingTasks){
         var task = await Task.findOne(
           {_id: item},
@@ -50,18 +50,23 @@ module.exports = function (router) {
         if(task === null){
           throw new Error(`Task with id ${item} does not exist!`);
         }
-        //task and user has 1:1 relationship
-        if(task.assignedUser !== ""){
-          throw new Error(`Pending task ${item} is already assigned to a different user!`)
-        }
-
+        //completed tasks can not be changed
         if(task.completed){
           throw new Error(`Task with id ${item} is completed and immutable`)
         }
-
+        //changing according to post 312 in piazza
+        if(!isEmpty(task.assignedUser)){
+         //unassign from old user
+         var oldUser = await User.findByIdAndUpdate(
+          {_id: task.assignedUser},
+          {$pull:{pendingTasks:item}}
+         );
+        }
+        
+        //assign this user's id and username
         task.assignedUser = userObject._id;
         task.assignedUserName = userObject.name;
-        console.log("body: ",task);
+
         await task.save();
       }
 
@@ -107,10 +112,10 @@ module.exports = function (router) {
     }
     }
     catch(e){
-      let status = classifyError(e);
-      res.status(status).send({
-        'message': error_codes[status],
-        'data':{'error': `User could not be inserted: Encountered error: ${e}`}
+      let {error, code} = classifyError(e);
+      res.status(code).send({
+        'message': error_codes[code],
+        'data':{'error': `User could not be inserted: Encountered error: ${error}`}
       })
     }
     
@@ -147,10 +152,10 @@ module.exports = function (router) {
             res.status(204).send();
           }
           catch(e){
-            let status = classifyError(e);
+            let {error, code} = classifyError(e);
             var json = {
-                'message': error_codes[status],
-                'data': {'error':`Error encountered while attempting to delete: ${e}`}
+                'message': error_codes[code],
+                'data': {'error':`Error encountered while attempting to delete: ${error}`}
             }
               res.status(500).send(json);
           }
@@ -158,7 +163,7 @@ module.exports = function (router) {
         }
         
       });
-      //TODO: Change error to terse. email unique
+
       userRoute_pv.put(async (req, res) => {
         const userId = req.params.id;
         const userBody = req.body;
@@ -187,19 +192,23 @@ module.exports = function (router) {
             if(task === null){
               throw new Error(`Task ${item} does not exist!`)
             }
-            //task and user has 1:1 relationship
-            console.log(task.assignedUser, user._id)
-            if(task.assignedUser !== "" && String(task.assignedUser) !== String(user._id)){
-              throw new Error(`Pending task ${item} is already assigned to a different user!`)
-            }
             if(task.completed){
               throw new Error(`Task with id ${task._id} is completed and immutable `);
+            }
+            //changing according to post 312 in piazza
+            if(!isEmpty(task.assignedUser)){
+              //unassign from old user
+              var oldUser = await User.findByIdAndUpdate(
+              {_id: task.assignedUser},
+              {$pull:{pendingTasks:item}}
+            );
             }
 
             task.assignedUser = user._id;
             task.assignedUserName = user.name;
             await task.save();
-            };
+            }
+          
 
             for(item of existingPendingTasks){
               if(!requestedPendingTasks.includes(item)){
@@ -238,10 +247,11 @@ module.exports = function (router) {
             res.status(200).send(json);
           }
           catch(e){
-            let status = classifyError(e);
+            let {error, code} = classifyError(e);
+            
             var json = {
-                'message': error_codes[status],
-                'data':{'error':`Error encountered while attempting to replace: ${e}`}
+                'message': error_codes[code],
+                'data':{'error':`Error encountered while attempting to replace: ${error}`}
               }
               res.status(status).send(json);
           }
@@ -254,8 +264,28 @@ module.exports = function (router) {
 };
 
 function classifyError(error){
-  if(error.toString().includes("CastError: Cast to ObjectId failed for value")){
-    return 400;
+  let error_response = {
+    "error": error,
+    "code": 500
   }
-  return 500;
+  if(error.toString().includes("CastError: Cast to ObjectId failed for value")){
+    error_response = {
+    "error": "String is provided where ObjectId is expected",
+    "code": 400
+    }
+    
+  }
+
+  else if(e.toString().includes("duplicate key error collection") && e.toString().includes("email_1")){
+    error_response = {
+    "error": "Email must be unique to a user",
+    "code": 400
+    }
+  }
+  return error_response;
+}
+
+
+function isEmpty(value){
+  return value===null || value===undefined || value.trim()==='';
 }

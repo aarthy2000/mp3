@@ -27,7 +27,7 @@ var UserSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     }
-});
+},{strict: 'throw'});
 
 function isNonEmpty(v){
     return v.trim().length > 0;
