@@ -33,7 +33,8 @@ var TaskSchema = new mongoose.Schema({
     },
     dateCreated: {
         type: Date,
-        default: Date.now
+        default: Date.now,
+        immutable: true
     }
 },{strict: 'throw'});
 

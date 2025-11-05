@@ -217,9 +217,9 @@ function sendErrorResponse(res, status, error, request_type){
   }
   var json = {
               'message': message_codes[status],
-              'data':{'error':`Error encountered while attempting to ${request_type}: ${error}`}
+              'data':{'error':`Error encountered while ${request_type}: ${error}`}
           }
-  res.status(500).send(json);
+  res.status(status).send(json);
 }
 
 function classiifyError(error){

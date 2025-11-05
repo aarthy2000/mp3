@@ -224,8 +224,8 @@ module.exports = function (router) {
             
 
             userBody.pendingTasks = requestedPendingTasks;
-            var putuser = await User.findOneAndReplace(
-              {_id:userId},
+            var putuser = await User.findByIdAndUpdate(
+              userId,
               userBody, //we replace the entire body with what user provided, only retaining pendingTasks
               {runValidators: true, new: true}
             );
@@ -234,7 +234,7 @@ module.exports = function (router) {
               //update tasks assignedUserName for pendingTasks only
               for (task of putuser.pendingTasks){
                 await Task.findByIdAndUpdate(
-                  {_id: task},
+                  task,
                   {$set: {assignedUserName: putuser.name, assignedUser: userId}}
                 )
               }
@@ -253,7 +253,7 @@ module.exports = function (router) {
                 'message': error_codes[code],
                 'data':{'error':`Error encountered while attempting to replace: ${error}`}
               }
-              res.status(status).send(json);
+              res.status(code).send(json);
           }
           
         }
@@ -276,7 +276,7 @@ function classifyError(error){
     
   }
 
-  else if(e.toString().includes("duplicate key error collection") && e.toString().includes("email_1")){
+  else if(error.toString().includes("duplicate key error collection") && error.toString().includes("email_1")){
     error_response = {
     "error": "Email must be unique to a user",
     "code": 400
