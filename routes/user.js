@@ -43,7 +43,10 @@ module.exports = function (router) {
     try{
       const userObject = new User(body);
 
-      const pendingTasks = body.pendingTasks ? body.pendingTasks : [];
+      let pendingTasks = body.pendingTasks ? body.pendingTasks : [];
+
+      pendingTasks = new Set(pendingTasks)
+      pendingTasks = [...pendingTasks]
 
       for(item of pendingTasks){
         var task = await Task.findOne(
@@ -51,7 +54,7 @@ module.exports = function (router) {
           {assignedUser:1, completed:1}
         )
         //if task does not exist, throw error
-        if(task === null){
+        if(task === null){  
           throw new Error(`Task with id ${item} does not exist!`);
         }
         //completed tasks can not be changed
@@ -186,7 +189,12 @@ module.exports = function (router) {
         }
         else{
           try{
-            const requestedPendingTasks = userBody.pendingTasks ? userBody.pendingTasks : [];
+            let requestedPendingTasks = userBody.pendingTasks ? userBody.pendingTasks : [];
+
+            //remove duplicates when its present in user req body
+
+            requestedPendingTasks = new Set(requestedPendingTasks)
+            requestedPendingTasks = [...requestedPendingTasks]
 
             const existingPendingTasks = user.pendingTasks;
 
